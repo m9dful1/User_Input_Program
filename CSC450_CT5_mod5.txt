@@ -3,7 +3,4 @@ Please be sure to append your data to this text file.
 If these first three lines are deleted, then your program is not functioning as expected.
 
 
-Here is some text
-Append this text to the file
-Here is some text to append
-Please append this text to the file
+Here is some text to append to the file

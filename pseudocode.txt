@@ -1,0 +1,91 @@
+BEGIN
+
+FUNCTION getExecutablePath()
+    DECLARE buffer as char array of size PATH_MAX
+
+    IF platform is Windows THEN
+        CALL GetModuleFileNameA(NULL, buffer, PATH_MAX)
+    ELSE IF platform is macOS THEN
+        DECLARE size as uint32_t initialized to sizeof(buffer)
+        IF _NSGetExecutablePath(buffer, &size) returns non-zero THEN
+            THROW runtime_error with message "Buffer too small; need size " + size
+    ELSE
+        CALL readlink("/proc/self/exe", buffer, PATH_MAX)
+        IF readlink returns -1 THEN
+            PRINT error message from perror("readlink")
+            THROW runtime_error with message "Error reading executable path"
+        buffer[count] = '\0' // Null-terminate the path
+    ENDIF
+
+    DECLARE path as string initialized with buffer
+    DECLARE lastSlash as size_t initialized with path.find_last_of("/\\")
+    IF lastSlash is npos THEN
+        THROW runtime_error with message "Unexpected path format"
+    ENDIF
+
+    RETURN substring of path from start to lastSlash
+ENDFUNCTION
+
+FUNCTION appendToFile(filename)
+    DECLARE outFile as ofstream
+    OPEN outFile with filename in append mode
+    IF outFile is not open THEN
+        PRINT "Error opening file for appending: " + filename
+        RETURN
+    ENDIF
+
+    DECLARE userInput as string
+    PRINT "Enter text to append to the file: "
+    READ line from stdin into userInput
+
+    WRITE userInput followed by newline to outFile
+    CLOSE outFile
+    PRINT "User input appended to file: " + filename
+ENDFUNCTION
+
+FUNCTION reverseFileContent(inputFile, outputFile)
+    DECLARE inFile as ifstream
+    OPEN inFile with inputFile
+    IF inFile is not open THEN
+        PRINT "Error opening file for reading: " + inputFile
+        RETURN
+    ENDIF
+
+    DECLARE content as string initialized with contents of inFile
+    CLOSE inFile
+
+    REVERSE content
+
+    DECLARE outFile as ofstream
+    OPEN outFile with outputFile
+    IF outFile is not open THEN
+        PRINT "Error opening file for writing: " + outputFile
+        RETURN
+    ENDIF
+
+    WRITE content to outFile
+    CLOSE outFile
+    PRINT "Reversed content written to file: " + outputFile
+ENDFUNCTION
+
+MAIN
+    DECLARE execDir as string
+    TRY
+        SET execDir to result of getExecutablePath()
+    CATCH exception as e
+        PRINT "Error determining executable path: " + e.what()
+        RETURN 1
+    ENDTRY
+
+    PRINT "Executable directory: " + execDir
+
+    DECLARE filename as string initialized to execDir + "/CSC450_CT5_mod5.txt"
+    DECLARE reversedFilename as string initialized to execDir + "/CSC450-mod5-reverse.txt"
+
+    CALL appendToFile(filename)
+    CALL reverseFileContent(filename, reversedFilename)
+
+    PRINT "User input appended and file content reversed successfully."
+ENDMAIN
+
+END
